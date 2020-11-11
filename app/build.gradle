@@ -31,6 +31,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = '1.8'
+        freeCompilerArgs += ['-Xopt-in=kotlin.RequiresOptIn']
     }
     buildFeatures { viewBinding = true }
 }
@@ -54,15 +55,19 @@ dependencies {
     kapt "com.google.dagger:hilt-android-compiler:2.28-alpha"
 
     // Retrofit, Moshi Converter, OkHttp Logging
-    implementation 'com.squareup.moshi:moshi-kotlin:1.8.0'
-    implementation 'com.squareup.retrofit2:retrofit:2.6.0'
-    implementation 'com.squareup.retrofit2:converter-moshi:2.6.0'
-    implementation 'com.squareup.okhttp3:logging-interceptor:3.13.1'
+    implementation 'com.squareup.moshi:moshi-kotlin:1.10.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-moshi:2.9.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.8.1'
+
+    implementation "io.coil-kt:coil:1.0.0"
 
     // Navigation
     def nav_version = "2.2.0-rc02"
     implementation "androidx.navigation:navigation-fragment-ktx:$nav_version"
     implementation "androidx.navigation:navigation-ui-ktx:$nav_version"
+
+    implementation 'com.github.hoc081098:ViewBindingDelegate:1.0.0-alpha01'
 
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'

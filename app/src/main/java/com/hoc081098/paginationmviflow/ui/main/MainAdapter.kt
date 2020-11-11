@@ -12,21 +12,18 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import coil.api.load
-import com.hoc081098.paginationmviflow.R
-import com.hoc081098.paginationmviflow.asObservable
+import coil.load
+import com.hoc081098.paginationmviflow.*
+import com.hoc081098.paginationmviflow.databinding.RecyclerItemHorizontalListBinding
+import com.hoc081098.paginationmviflow.databinding.RecyclerItemPhotoBinding
+import com.hoc081098.paginationmviflow.databinding.RecyclerItemPlaceholderBinding
 import com.hoc081098.paginationmviflow.ui.main.MainContract.Item
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PlaceholderState
-import com.jakewharton.rxbinding3.recyclerview.scrollEvents
-import com.jakewharton.rxbinding3.view.clicks
-import com.jakewharton.rxbinding3.view.detaches
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
-import io.reactivex.rxkotlin.subscribeBy
-import io.reactivex.subjects.PublishSubject
-import kotlinx.android.synthetic.main.recycler_item_horizontal_list.view.*
-import kotlinx.android.synthetic.main.recycler_item_photo.view.*
-import kotlinx.android.synthetic.main.recycler_item_placeholder.view.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 private object DiffUtilItemCallback : DiffUtil.ItemCallback<Item>() {
   override fun areItemsTheSame(oldItem: Item, newItem: Item): Boolean {
@@ -51,24 +48,24 @@ private object DiffUtilItemCallback : DiffUtil.ItemCallback<Item>() {
 }
 
 class MainAdapter(
-  private val compositeDisposable: CompositeDisposable,
+  private val coroutineScope: CoroutineScope,
   private val viewPool: RecyclerView.RecycledViewPool
 ) :
   ListAdapter<Item, MainAdapter.VH>(DiffUtilItemCallback) {
-  private val scrollToFirst = PublishSubject.create<Unit>()
+  private val scrollToFirstSF = MutableSharedFlow<Unit>()
   private var layoutManagerSavedState: Parcelable? = null
 
-  private val retryS = PublishSubject.create<Unit>()
-  val retryObservable get() = retryS.asObservable()
+  private val retrySF = MutableSharedFlow<Unit>()
+  val retryFlow get() = retrySF.asFlow()
 
-  private val loadNextPageHorizontalS = PublishSubject.create<Unit>()
-  val loadNextPageHorizontalObservable get() = loadNextPageHorizontalS.asObservable()
+  private val loadNextPageHorizontalSF = MutableSharedFlow<Unit>()
+  val loadNextPageHorizontalFlow get() = loadNextPageHorizontalSF.asFlow()
 
-  private val retryNextPageHorizontalS = PublishSubject.create<Unit>()
-  val retryNextPageHorizontalObservable get() = retryNextPageHorizontalS.asObservable()
+  private val retryNextPageHorizontalSF = MutableSharedFlow<Unit>()
+  val retryNextPageHorizontalFlow get() = retryNextPageHorizontalSF.asFlow()
 
-  private val retryHorizontalS = PublishSubject.create<Unit>()
-  val retryHorizontalObservable get() = retryHorizontalS.asObservable()
+  private val retryHorizontalSF = MutableSharedFlow<Unit>()
+  val retryHorizontalFlow get() = retryHorizontalSF.asFlow()
 
   /**
    *
@@ -77,9 +74,15 @@ class MainAdapter(
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
     return when (viewType) {
-      R.layout.recycler_item_photo -> PhotoVH(itemView)
-      R.layout.recycler_item_placeholder -> PlaceHolderVH(itemView, parent)
-      R.layout.recycler_item_horizontal_list -> HorizontalListVH(itemView, parent)
+      R.layout.recycler_item_photo -> PhotoVH(RecyclerItemPhotoBinding.bind(itemView))
+      R.layout.recycler_item_placeholder -> PlaceHolderVH(
+        RecyclerItemPlaceholderBinding.bind(itemView),
+        parent
+      )
+      R.layout.recycler_item_horizontal_list -> HorizontalListVH(
+        RecyclerItemHorizontalListBinding.bind(itemView),
+        parent
+      )
       else -> error("Unknown viewType=$viewType")
     }
   }
@@ -93,7 +96,9 @@ class MainAdapter(
       Log.d("###", "[PAYLOAD] $payload")
       when {
         payload is PlaceholderState && holder is PlaceHolderVH -> holder.update(payload)
-        payload is Item.HorizontalList && holder is HorizontalListVH -> holder.update(payload)
+        payload is Item.HorizontalList && holder is HorizontalListVH -> holder.update(
+          payload
+        )
         payload is Item.Photo && holder is PhotoVH -> holder.update(payload)
       }
     }
@@ -110,15 +115,13 @@ class MainAdapter(
     abstract fun bind(item: Item)
   }
 
-  private class PhotoVH(itemView: View) : VH(itemView) {
-    private val image = itemView.image!!
-
+  private class PhotoVH(private val binding: RecyclerItemPhotoBinding) : VH(binding.root) {
     override fun bind(item: Item) {
       if (item !is Item.Photo) return
       update(item)
     }
 
-    fun update(item: Item.Photo) {
+    fun update(item: Item.Photo) = binding.run {
       image.load(item.photo.thumbnailUrl) {
         crossfade(true)
         placeholder(R.drawable.placeholder)
@@ -127,25 +130,25 @@ class MainAdapter(
     }
   }
 
-  private inner class PlaceHolderVH(itemView: View, parent: ViewGroup) : VH(itemView) {
-    private val progressBar = itemView.progress_bar!!
-    private val textError = itemView.text_error!!
-    private val buttonRetry = itemView.button_retry!!
-
+  private inner class PlaceHolderVH(
+    private val binding: RecyclerItemPlaceholderBinding,
+    parent: ViewGroup
+  ) : VH(binding.root) {
     init {
-      buttonRetry
+      binding
+        .buttonRetry
         .clicks()
         .takeUntil(parent.detaches())
         .filter {
-          val position = adapterPosition
+          val position = bindingAdapterPosition
           if (position == RecyclerView.NO_POSITION) {
             false
           } else {
             (getItem(position) as? Item.Placeholder)?.state is PlaceholderState.Error
           }
         }
-        .subscribeBy { retryS.onNext(Unit) }
-        .addTo(compositeDisposable)
+        .onEach { retrySF.emit(Unit) }
+        .launchIn(coroutineScope)
     }
 
     override fun bind(item: Item) {
@@ -153,7 +156,7 @@ class MainAdapter(
       update(item.state)
     }
 
-    fun update(state: PlaceholderState) {
+    fun update(state: PlaceholderState) = binding.run {
       Log.d("###", "[BIND] $state")
 
       when (state) {
@@ -177,19 +180,22 @@ class MainAdapter(
     }
   }
 
-  private inner class HorizontalListVH(itemView: View, parent: ViewGroup) : VH(itemView) {
-    private val recycler = itemView.recycler_horizontal!!.apply { setRecycledViewPool(viewPool) }
-    private val progressBar = itemView.progress_bar_horizontal!!
-    private val textError = itemView.text_error_horizontal!!
-    private val buttonRetry = itemView.button_retry_horizontal!!
-
-    private val adapter = HorizontalAdapter(compositeDisposable)
+  private inner class HorizontalListVH(
+    private val binding: RecyclerItemHorizontalListBinding,
+    parent: ViewGroup
+  ) : VH(binding.root) {
+    private val adapter = HorizontalAdapter(coroutineScope)
     private val visibleThreshold get() = 2
-    internal val linearLayoutManager =
-      LinearLayoutManager(itemView.context, RecyclerView.HORIZONTAL, false)
+    val linearLayoutManager = LinearLayoutManager(
+      itemView.context,
+      RecyclerView.HORIZONTAL,
+      false
+    )
 
     init {
-      recycler.run {
+      val recyclerView = binding.recyclerHorizontal.apply {
+        setRecycledViewPool(viewPool)
+
         setHasFixedSize(true)
         adapter = this@HorizontalListVH.adapter
         layoutManager = this@HorizontalListVH.linearLayoutManager
@@ -202,7 +208,8 @@ class MainAdapter(
             state: RecyclerView.State
           ) {
             outRect.run {
-              right = if (parent.getChildAdapterPosition(view) == parent.adapter!!.itemCount - 1) 0 else 8
+              right =
+                if (parent.getChildAdapterPosition(view) == parent.adapter!!.itemCount - 1) 0 else 8
               left = 0
               top = 0
               bottom = 0
@@ -212,37 +219,37 @@ class MainAdapter(
       }
 
       adapter
-        .retryNextPageObservable
-        .subscribe(retryNextPageHorizontalS::onNext)
-        .addTo(compositeDisposable)
+        .retryNextPageFlow
+        .onEach { retryNextPageHorizontalSF.emit(Unit) }
+        .launchIn(coroutineScope)
 
-      buttonRetry
+      binding.buttonRetryHorizontal
         .clicks()
         .takeUntil(parent.detaches())
         .filter {
-          val position = adapterPosition
+          val position = bindingAdapterPosition
           if (position == RecyclerView.NO_POSITION) {
             false
           } else {
             (getItem(position) as? Item.HorizontalList)?.shouldRetry() == true
           }
         }
-        .subscribeBy { retryHorizontalS.onNext(Unit) }
-        .addTo(compositeDisposable)
+        .onEach { retryHorizontalSF.emit(Unit) }
+        .launchIn(coroutineScope)
 
-      recycler
+      recyclerView
         .scrollEvents()
         .takeUntil(parent.detaches())
         .filter { (_, dx, _) ->
-          val layoutManager = recycler.layoutManager as LinearLayoutManager
+          val layoutManager = recyclerView.layoutManager as LinearLayoutManager
           dx > 0 && layoutManager.findLastVisibleItemPosition() + visibleThreshold >= layoutManager.itemCount
         }
-        .subscribeBy { loadNextPageHorizontalS.onNext(Unit) }
-        .addTo(compositeDisposable)
+        .onEach { loadNextPageHorizontalSF.emit(Unit) }
+        .launchIn(coroutineScope)
 
-      scrollToFirst
-        .subscribeBy { recycler.scrollToPosition(0) }
-        .addTo(compositeDisposable)
+      scrollToFirstSF
+        .onEach { recyclerView.scrollToPosition(0) }
+        .launchIn(coroutineScope)
     }
 
     override fun bind(item: Item) {
@@ -250,12 +257,12 @@ class MainAdapter(
       update(item)
     }
 
-    fun update(item: Item.HorizontalList) {
-      progressBar.isInvisible = !item.isLoading
+    fun update(item: Item.HorizontalList) = binding.run {
+      progressBarHorizontal.isInvisible = !item.isLoading
 
-      textError.isInvisible = item.error == null
-      buttonRetry.isInvisible = item.error == null
-      textError.text = item.error?.message
+      textErrorHorizontal.isInvisible = item.error == null
+      buttonRetryHorizontal.isInvisible = item.error == null
+      textErrorHorizontal.text = item.error?.message
 
       adapter.submitList(item.items)
 
@@ -277,5 +284,5 @@ class MainAdapter(
     }
   }
 
-  fun scrollHorizontalListToFirst() = scrollToFirst.onNext(Unit)
+  fun scrollHorizontalListToFirst() = scrollToFirstSF.tryEmit(Unit).let { Unit }
 }

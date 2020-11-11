@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 
 @Suppress("USELESS_CAST")
-@ExperimentalCoroutinesApi
 class MainInteractorImpl @Inject constructor(
     private val getPhotosUseCase: GetPhotosUseCase,
     private val getPostsUseCase: GetPostsUseCase,

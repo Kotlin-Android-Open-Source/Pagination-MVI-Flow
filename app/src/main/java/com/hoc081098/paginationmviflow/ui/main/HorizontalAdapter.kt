@@ -10,9 +10,18 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.hoc081098.paginationmviflow.R
+import com.hoc081098.paginationmviflow.asFlow
+import com.hoc081098.paginationmviflow.clicks
+import com.hoc081098.paginationmviflow.databinding.RecyclerItemHorizontalPlaceholderBinding
+import com.hoc081098.paginationmviflow.databinding.RecyclerItemHorizontalPostBinding
 import com.hoc081098.paginationmviflow.ui.main.MainContract.Item.HorizontalList.HorizontalItem
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PlaceholderState
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PostVS
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 private object HorizontalItemItemCallback : DiffUtil.ItemCallback<HorizontalItem>() {
   override fun areItemsTheSame(oldItem: HorizontalItem, newItem: HorizontalItem): Boolean {
@@ -24,7 +33,7 @@ private object HorizontalItemItemCallback : DiffUtil.ItemCallback<HorizontalItem
   }
 
   override fun areContentsTheSame(oldItem: HorizontalItem, newItem: HorizontalItem) =
-    oldItem == newItem
+      oldItem == newItem
 
   override fun getChangePayload(oldItem: HorizontalItem, newItem: HorizontalItem): Any? {
     return when {
@@ -36,18 +45,17 @@ private object HorizontalItemItemCallback : DiffUtil.ItemCallback<HorizontalItem
 }
 
 class HorizontalAdapter(
-  private val compositeDisposable: CompositeDisposable
-) :
-  ListAdapter<HorizontalItem, HorizontalAdapter.VH>(HorizontalItemItemCallback) {
+    private val coroutineScope: CoroutineScope,
+) : ListAdapter<HorizontalItem, HorizontalAdapter.VH>(HorizontalItemItemCallback) {
 
-  private val retryNextPageS = PublishSubject.create<Unit>()
-  val retryNextPageObservable get() = retryNextPageS.asObservable()
+  private val retryNextPageSF = MutableSharedFlow<Unit>()
+  val retryNextPageFlow get() = retryNextPageSF.asFlow()
 
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
     return when (viewType) {
-      R.layout.recycler_item_horizontal_post -> PostVH(itemView)
-      R.layout.recycler_item_horizontal_placeholder -> PlaceholderVH(itemView)
+      R.layout.recycler_item_horizontal_post -> PostVH(RecyclerItemHorizontalPostBinding.bind(itemView))
+      R.layout.recycler_item_horizontal_placeholder -> PlaceholderVH(RecyclerItemHorizontalPlaceholderBinding.bind(itemView))
       else -> error("Unknown viewType=$viewType")
     }
   }
@@ -72,39 +80,33 @@ class HorizontalAdapter(
     abstract fun bind(item: HorizontalItem)
   }
 
-  private class PostVH(itemView: View) : VH(itemView) {
-    private val textTitle = itemView.text_title!!
-    private val textBody = itemView.text_body!!
-
+  private class PostVH(private val binding: RecyclerItemHorizontalPostBinding) : VH(binding.root) {
     override fun bind(item: HorizontalItem) {
       if (item !is HorizontalItem.Post) return
       update(item.post)
     }
 
-    fun update(post: PostVS) {
+    fun update(post: PostVS) = binding.run {
       textTitle.text = post.title
       textBody.text = post.body
     }
   }
 
-  private inner class PlaceholderVH(itemView: View) : VH(itemView) {
-    private val progressBar = itemView.progress_bar!!
-    private val textError = itemView.text_error!!
-    private val buttonRetry = itemView.button_retry!!
-
+  private inner class PlaceholderVH(private val binding: RecyclerItemHorizontalPlaceholderBinding) : VH(binding.root) {
     init {
-      buttonRetry
-        .clicks()
-        .filter {
-          val position = adapterPosition
-          if (position == RecyclerView.NO_POSITION) {
-            false
-          } else {
-            (getItem(position) as? HorizontalItem.Placeholder)?.state is PlaceholderState.Error
+      binding
+          .buttonRetry
+          .clicks()
+          .filter {
+            val position = bindingAdapterPosition
+            if (position == RecyclerView.NO_POSITION) {
+              false
+            } else {
+              (getItem(position) as? HorizontalItem.Placeholder)?.state is PlaceholderState.Error
+            }
           }
-        }
-        .subscribeBy { retryNextPageS.onNext(Unit) }
-        .addTo(compositeDisposable)
+          .onEach { retryNextPageSF.emit(Unit) }
+          .launchIn(coroutineScope)
     }
 
     override fun bind(item: HorizontalItem) {
@@ -112,7 +114,7 @@ class HorizontalAdapter(
       update(item.state)
     }
 
-    fun update(state: PlaceholderState) {
+    fun update(state: PlaceholderState) = binding.run {
       when (state) {
         PlaceholderState.Loading -> {
           progressBar.isInvisible = false

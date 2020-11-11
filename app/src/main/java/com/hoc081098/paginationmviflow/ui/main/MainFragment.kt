@@ -3,56 +3,38 @@ package com.hoc081098.paginationmviflow.ui.main
 import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.hoc081098.paginationmviflow.R
-import com.hoc081098.paginationmviflow.isOrientationPortrait
-import com.hoc081098.paginationmviflow.toast
+import com.hoc081098.paginationmviflow.*
+import com.hoc081098.paginationmviflow.databinding.FragmentMainBinding
 import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewIntent
-import com.jakewharton.rxbinding3.recyclerview.scrollEvents
-import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
-import dagger.android.support.AndroidSupportInjection
-import io.reactivex.Observable
-import io.reactivex.ObservableSource
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
-import io.reactivex.rxkotlin.subscribeBy
-import kotlinx.android.synthetic.main.fragment_main.*
+import com.hoc081098.viewbindingdelegate.viewBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import java.util.concurrent.TimeUnit
-import javax.inject.Inject
 import kotlin.LazyThreadSafetyMode.NONE
 
-@ExperimentalCoroutinesApi
-class MainFragment : Fragment() {
-  @Inject
-  lateinit var factory: ViewModelProvider.Factory
-  private val mainVM by viewModels<MainVM> { factory }
-  private val compositeDisposable = CompositeDisposable()
+@AndroidEntryPoint
+@OptIn(ExperimentalCoroutinesApi::class)
+class MainFragment : Fragment(R.layout.fragment_main) {
+  private val mainVM by viewModels<MainVM>()
+  private val binding by viewBinding<FragmentMainBinding>()
 
-  private val maxSpanCount get() = if (requireContext().isOrientationPortrait) 2 else 4
-  private val visibleThreshold get() = 2 * maxSpanCount + 1
+  private inline val maxSpanCount get() = if (requireContext().isOrientationPortrait) 2 else 4
+  private inline val visibleThreshold get() = 2 * maxSpanCount + 1
 
-  private val adapter by lazy(NONE) { MainAdapter(compositeDisposable, recycler.recycledViewPool) }
-
-  override fun onCreate(savedInstanceState: Bundle?) {
-    AndroidSupportInjection.inject(this)
-    super.onCreate(savedInstanceState)
+  private val adapter by lazy(NONE) {
+    MainAdapter(
+      viewLifecycleOwner.lifecycleScope,
+      binding.recycler.recycledViewPool
+    )
   }
-
-  override fun onCreateView(
-    inflater: LayoutInflater,
-    container: ViewGroup?,
-    savedInstanceState: Bundle?
-  ): View = inflater.inflate(R.layout.fragment_main, container, false)
 
   override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
     super.onViewCreated(view, savedInstanceState)
@@ -61,7 +43,7 @@ class MainFragment : Fragment() {
   }
 
   private fun setupView() {
-    recycler.run {
+    binding.recycler.run {
       setHasFixedSize(true)
       adapter = this@MainFragment.adapter
 
@@ -127,46 +109,60 @@ class MainFragment : Fragment() {
   }
 
   private fun bindVM() {
-    mainVM.stateD.observe(viewLifecycleOwner, Observer { vs ->
-      vs ?: return@Observer
-      Log.d("###", "${vs.isRefreshing} ${vs.enableRefresh}")
+    viewLifecycleOwner.lifecycleScope.launchWhenStarted {
+      val swipeRefresh = binding.swipeRefresh
 
-      adapter.submitList(vs.items)
+      mainVM.stateFlow
+        .onEach { vs ->
+          Log.d("###", "${vs.isRefreshing} ${vs.enableRefresh}")
 
-      if (vs.isRefreshing) {
-        swipe_refresh.post { swipe_refresh.isRefreshing = true }
-      } else {
-        swipe_refresh.isRefreshing = false
-      }
-      swipe_refresh.isEnabled = vs.enableRefresh
-    })
-    mainVM
-      .singleEventObservable
-      .subscribeBy(onNext = ::handleSingleEvent)
-      .addTo(compositeDisposable)
+          adapter.submitList(vs.items)
 
-    mainVM.processIntents(
-      Observable.mergeArray(
-        Observable.just(ViewIntent.Initial),
+          if (vs.isRefreshing) {
+            swipeRefresh.post { swipeRefresh.isRefreshing = true }
+          } else {
+            swipeRefresh.isRefreshing = false
+          }
+          swipeRefresh.isEnabled = vs.enableRefresh
+        }
+        .collect()
+    }
+
+
+    viewLifecycleOwner.lifecycleScope.launchWhenStarted {
+      mainVM
+        .singleEventFlow
+        .onEach { handleSingleEvent(it) }
+        .collect()
+    }
+
+    viewLifecycleOwner.lifecycleScope.launchWhenStarted {
+      merge(
+        flowOf(ViewIntent.Initial),
         loadNextPageIntent(),
-        swipe_refresh.refreshes().map { ViewIntent.Refresh },
+        binding.swipeRefresh.refreshes().map { ViewIntent.Refresh },
         adapter
-          .retryObservable
-          .throttleFirst(500, TimeUnit.MILLISECONDS)
+          .retryFlow
+          // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
+          //.throttleFirst(500, TimeUnit.MILLISECONDS)
           .map { ViewIntent.RetryLoadPage },
         adapter
-          .loadNextPageHorizontalObservable
+          .loadNextPageHorizontalFlow
           .map { ViewIntent.LoadNextPageHorizontal },
         adapter
-          .retryNextPageHorizontalObservable
-          .throttleFirst(500, TimeUnit.MILLISECONDS)
+          .retryNextPageHorizontalFlow
+          // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
+          //.throttleFirst(500, TimeUnit.MILLISECONDS)
           .map { ViewIntent.RetryLoadPageHorizontal },
         adapter
-          .retryHorizontalObservable
-          .throttleFirst(500, TimeUnit.MILLISECONDS)
-          .map { ViewIntent.RetryHorizontal }
+          .retryHorizontalFlow
+          // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
+          //.throttleFirst(500, TimeUnit.MILLISECONDS)
+          .map { ViewIntent.RetryHorizontal },
       )
-    ).addTo(compositeDisposable)
+        .onEach { mainVM.processIntent(it) }
+        .collect()
+    }
   }
 
   private fun handleSingleEvent(event: MainContract.SingleEvent) {
@@ -199,11 +195,11 @@ class MainFragment : Fragment() {
     }
   }
 
-  private fun loadNextPageIntent(): ObservableSource<ViewIntent> {
-    return recycler
+  private fun loadNextPageIntent(): Flow<ViewIntent.LoadNextPage> {
+    return binding.recycler
       .scrollEvents()
       .filter { (_, _, dy) ->
-        val layoutManager = recycler.layoutManager as GridLayoutManager
+        val layoutManager = binding.recycler.layoutManager as GridLayoutManager
         dy > 0 && layoutManager.findLastVisibleItemPosition() + visibleThreshold >= layoutManager.itemCount
       }
       .map { ViewIntent.LoadNextPage }
@@ -212,7 +208,6 @@ class MainFragment : Fragment() {
   override fun onDestroyView() {
     super.onDestroyView()
 
-    compositeDisposable.clear()
-    recycler.adapter = null
+    binding.recycler.adapter = null
   }
 }
