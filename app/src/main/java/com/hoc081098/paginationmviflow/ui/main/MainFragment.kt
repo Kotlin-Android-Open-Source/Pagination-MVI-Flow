@@ -131,7 +131,7 @@ class MainFragment : Fragment(R.layout.fragment_main) {
     viewLifecycleOwner.lifecycleScope.launchWhenStarted {
       mainVM
         .singleEventFlow
-        .onEach { handleSingleEvent(it) }
+        .onEach(::handleSingleEvent)
         .collect()
     }
 
@@ -164,7 +164,7 @@ class MainFragment : Fragment(R.layout.fragment_main) {
     }
   }
 
-  private fun handleSingleEvent(event: MainContract.SingleEvent) {
+  private suspend fun handleSingleEvent(event: MainContract.SingleEvent) {
     return when (event) {
       MainContract.SingleEvent.RefreshSuccess -> {
         toast("Refresh success")
