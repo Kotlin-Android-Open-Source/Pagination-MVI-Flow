@@ -284,5 +284,5 @@ class MainAdapter(
     }
   }
 
-  suspend fun scrollHorizontalListToFirst() = scrollToFirstSF.emit(Unit).let { Unit }
+  suspend fun scrollHorizontalListToFirst() = scrollToFirstSF.emit(Unit)
 }
