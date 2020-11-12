@@ -12,9 +12,11 @@ import com.hoc081098.paginationmviflow.withLatestFrom
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
-import javax.inject.Inject
 
-@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+@OptIn(
+  ExperimentalCoroutinesApi::class,
+  FlowPreview::class
+)
 class MainVM @ViewModelInject constructor(private val interactor: Interactor) : ViewModel() {
   private val initialVS = ViewState.initial()
 
@@ -146,16 +148,10 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
         }
     }
 
-  private val intentFilter: FlowTransformer<ViewIntent, ViewIntent> = { intents ->
-    merge(
-      intents.filterIsInstance<ViewIntent.Initial>().take(1),
-      intents.filter { it !is ViewIntent.Initial }
-    )
-  }
 
   init {
     _intentSF
-      .let(intentFilter)
+      .let(intentFilterer)
       .let(toPartialStateChange)
       .scan(initialVS) { vs, change -> change.reduce(vs) }
       .onEach { _stateSF.value = it }
@@ -163,6 +159,13 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
   }
 
   private companion object {
+    val intentFilterer: FlowTransformer<ViewIntent, ViewIntent> = { intents ->
+      merge(
+        intents.filterIsInstance<ViewIntent.Initial>().take(1),
+        intents.filter { it !is ViewIntent.Initial }
+      )
+    }
+
     const val PHOTO_PAGE_SIZE = 20
     const val POST_PAGE_SIZE = 10
   }
