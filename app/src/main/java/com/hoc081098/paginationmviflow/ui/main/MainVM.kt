@@ -1,5 +1,6 @@
 package com.hoc081098.paginationmviflow.ui.main
 
+import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hoc081098.paginationmviflow.FlowTransformer
@@ -14,7 +15,7 @@ import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-class MainVM @Inject constructor(private val interactor: Interactor) : ViewModel() {
+class MainVM @ViewModelInject constructor(private val interactor: Interactor) : ViewModel() {
   private val initialVS = ViewState.initial()
 
   private val _stateSF = MutableStateFlow(initialVS)

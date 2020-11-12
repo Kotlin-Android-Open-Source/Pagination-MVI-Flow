@@ -9,13 +9,10 @@ import androidx.annotation.CheckResult
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
@@ -88,10 +85,12 @@ fun ViewGroup.detaches(): Flow<Unit> {
 @OptIn(ExperimentalCoroutinesApi::class)
 fun <T, R> Flow<T>.takeUntil(other: Flow<R>): Flow<T> {
   return channelFlow {
-    launch { collect { send(it) } }
-
     launch {
       other.take(1).collect { close() }
+    }
+
+    launch {
+      collect { send(it) }
     }
   }
 }
@@ -151,3 +150,48 @@ fun <A, B, R> Flow<A>.withLatestFrom(other: Flow<B>, transform: suspend (A, B) -
     }
   }
 }
+
+/*
+fun main() = runBlocking {
+  println("Start...")
+
+  val mutableStateFlow = MutableStateFlow(1)
+
+  launch {
+    while (true) {
+      delay(333)
+      mutableStateFlow.value = Random.nextInt()
+      println("State emit ${mutableStateFlow.value}")
+    }
+  }
+
+  generateSequence(0) { it + 1 }.asFlow()
+    .onEach { delay(1000) }
+    .drop(1)
+    .onEach { println("Emit $it") }
+    .withLatestFrom(mutableStateFlow)
+    .onEach { println("With latest $it") }
+    .collect { }
+}*/
+
+/*fun main() = runBlocking {
+  val other = flow<Nothing> {
+    delay(3333)
+    error("???")
+  }
+
+  val other2 = flow<Int> {
+    delay(3333)
+    emit(22)
+  }
+  val never = flow<Nothing> { delay(Long.MAX_VALUE) }.onCompletion { println("1 completed") }
+
+  generateSequence(0) { it + 1 }.asFlow()
+    .onEach { delay(200) }
+    .take(20)
+    .onEach { println("Emit $it") }
+    .takeUntil(never)
+    .catch { println("Error $it") }
+    .onCompletion { println("Done... $it") }
+    .collect { }
+}*/

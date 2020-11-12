@@ -17,7 +17,6 @@ import com.hoc081098.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
-import java.util.concurrent.TimeUnit
 import kotlin.LazyThreadSafetyMode.NONE
 
 @AndroidEntryPoint

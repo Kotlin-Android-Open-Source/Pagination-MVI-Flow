@@ -1,12 +1,11 @@
 package com.hoc081098.paginationmviflow.ui.main
 
-import com.hoc081098.paginationmviflow.domain.dispatchers_schedulers.CoroutinesDispatchersProvider
+import android.util.Log
 import com.hoc081098.paginationmviflow.domain.usecase.GetPhotosUseCase
 import com.hoc081098.paginationmviflow.domain.usecase.GetPostsUseCase
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.*
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PhotoVS
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PostVS
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
@@ -16,8 +15,11 @@ import javax.inject.Inject
 class MainInteractorImpl @Inject constructor(
     private val getPhotosUseCase: GetPhotosUseCase,
     private val getPostsUseCase: GetPostsUseCase,
-    private val dispatchers: CoroutinesDispatchersProvider
 ) : MainContract.Interactor {
+  init {
+    Log.d("###", toString())
+  }
+
   override fun photoNextPageChanges(
       start: Int,
       limit: Int
