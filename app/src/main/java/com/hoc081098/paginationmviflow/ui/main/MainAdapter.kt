@@ -13,10 +13,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
-import com.hoc081098.paginationmviflow.*
+import com.hoc081098.paginationmviflow.R
+import com.hoc081098.paginationmviflow.asFlow
+import com.hoc081098.paginationmviflow.clicks
 import com.hoc081098.paginationmviflow.databinding.RecyclerItemHorizontalListBinding
 import com.hoc081098.paginationmviflow.databinding.RecyclerItemPhotoBinding
 import com.hoc081098.paginationmviflow.databinding.RecyclerItemPlaceholderBinding
+import com.hoc081098.paginationmviflow.detaches
+import com.hoc081098.paginationmviflow.scrollEvents
+import com.hoc081098.paginationmviflow.takeUntil
 import com.hoc081098.paginationmviflow.ui.main.MainContract.Item
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PlaceholderState
 import kotlinx.coroutines.CoroutineScope

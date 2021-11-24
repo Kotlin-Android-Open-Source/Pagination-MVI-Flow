@@ -1,36 +1,62 @@
 package com.hoc081098.paginationmviflow.ui.main
 
-import androidx.hilt.lifecycle.ViewModelInject
+import com.hoc081098.paginationmviflow.ui.main.MainContract.SingleEvent as SE
+import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewIntent as VI
+import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewState as VS
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hoc081098.flowext.flatMapFirst
+import com.hoc081098.flowext.withLatestFrom
 import com.hoc081098.paginationmviflow.FlowTransformer
-import com.hoc081098.paginationmviflow.asFlow
-import com.hoc081098.paginationmviflow.flatMapFirst
-import com.hoc081098.paginationmviflow.ui.main.MainContract.*
-import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.*
-import com.hoc081098.paginationmviflow.withLatestFrom
+import com.hoc081098.paginationmviflow.ui.main.MainContract.Interactor
+import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange
+import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PhotoFirstPage
+import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PhotoNextPage
+import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PostFirstPage
+import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PostNextPage
+import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.Refresh
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.flatMapMerge
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.take
 
 @OptIn(
   ExperimentalCoroutinesApi::class,
   FlowPreview::class
 )
-class MainVM @ViewModelInject constructor(private val interactor: Interactor) : ViewModel() {
-  private val initialVS = ViewState.initial()
+@HiltViewModel
+class MainVM @Inject constructor(private val interactor: Interactor) : ViewModel() {
+  private val initialVS = VS.initial()
 
   private val _stateSF = MutableStateFlow(initialVS)
-  private val _singleEventSF = MutableSharedFlow<SingleEvent>(extraBufferCapacity = 64)
-  private val _intentSF = MutableSharedFlow<ViewIntent>(extraBufferCapacity = 64)
+  private val _singleEventChannel = Channel<SE>(Channel.UNLIMITED)
+  private val _intentSF = MutableSharedFlow<VI>(extraBufferCapacity = 64)
 
-  val stateFlow get() = _stateSF.asStateFlow()
-  val singleEventFlow get() = _singleEventSF.asFlow()
+  val stateFlow: StateFlow<VS> get() = _stateSF.asStateFlow()
+  val singleEventFlow: Flow<SE> get() = _singleEventChannel.receiveAsFlow()
 
-  suspend fun processIntent(intent: ViewIntent) = _intentSF.emit(intent)
+  suspend fun processIntent(intent: VI) = _intentSF.emit(intent)
 
   private val initialProcessor:
-      FlowTransformer<ViewIntent.Initial, PartialStateChange> = { intents ->
+    FlowTransformer<VI.Initial, PartialStateChange> = { intents ->
     intents
       .withLatestFrom(_stateSF)
       .filter { (_, vs) -> vs.photoItems.isEmpty() }
@@ -42,7 +68,7 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
       }
   }
 
-  private val nextPageProcessor: FlowTransformer<ViewIntent.LoadNextPage, PartialStateChange> =
+  private val nextPageProcessor: FlowTransformer<VI.LoadNextPage, PartialStateChange> =
     { intents ->
       intents
         .withLatestFrom(_stateSF)
@@ -51,7 +77,7 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
         .flatMapFirst { interactor.photoNextPageChanges(start = it, limit = PHOTO_PAGE_SIZE) }
     }
 
-  private val retryLoadPageProcessor: FlowTransformer<ViewIntent.RetryLoadPage, PartialStateChange> =
+  private val retryLoadPageProcessor: FlowTransformer<VI.RetryLoadPage, PartialStateChange> =
     { intents ->
       intents
         .withLatestFrom(_stateSF)
@@ -60,7 +86,7 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
         .flatMapFirst { interactor.photoNextPageChanges(start = it, limit = PHOTO_PAGE_SIZE) }
     }
 
-  private val loadNextPageHorizontalProcessor: FlowTransformer<ViewIntent.LoadNextPageHorizontal, PartialStateChange> =
+  private val loadNextPageHorizontalProcessor: FlowTransformer<VI.LoadNextPageHorizontal, PartialStateChange> =
     { intents ->
       intents
         .withLatestFrom(_stateSF)
@@ -69,7 +95,7 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
         .flatMapFirst { interactor.postNextPageChanges(start = it, limit = POST_PAGE_SIZE) }
     }
 
-  private val retryLoadPageHorizontalProcessor: FlowTransformer<ViewIntent.RetryLoadPageHorizontal, PartialStateChange> =
+  private val retryLoadPageHorizontalProcessor: FlowTransformer<VI.RetryLoadPageHorizontal, PartialStateChange> =
     { intents ->
       intents
         .withLatestFrom(_stateSF)
@@ -78,7 +104,7 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
         .flatMapFirst { interactor.postNextPageChanges(start = it, limit = POST_PAGE_SIZE) }
     }
 
-  private val retryHorizontalProcessor: FlowTransformer<ViewIntent.RetryHorizontal, PartialStateChange> =
+  private val retryHorizontalProcessor: FlowTransformer<VI.RetryHorizontal, PartialStateChange> =
     { intents ->
       intents
         .withLatestFrom(_stateSF)
@@ -86,7 +112,7 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
         .flatMapFirst { interactor.postFirstPageChanges(limit = POST_PAGE_SIZE) }
     }
 
-  private val refreshProcessor: FlowTransformer<ViewIntent.Refresh, PartialStateChange> =
+  private val refreshProcessor: FlowTransformer<VI.Refresh, PartialStateChange> =
     { intents ->
       intents
         .withLatestFrom(_stateSF)
@@ -99,22 +125,25 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
         }
     }
 
-  private val toPartialStateChange: FlowTransformer<ViewIntent, PartialStateChange> = { intents ->
+  private val toPartialStateChange: FlowTransformer<VI, PartialStateChange> = { intents ->
     intents
       .shareIn(viewModelScope, SharingStarted.WhileSubscribed())
       .let { shared ->
         merge(
-          shared.filterIsInstance<ViewIntent.Initial>().let(initialProcessor),
-          shared.filterIsInstance<ViewIntent.LoadNextPage>().let(nextPageProcessor),
-          shared.filterIsInstance<ViewIntent.RetryLoadPage>().let(retryLoadPageProcessor),
-          shared.filterIsInstance<ViewIntent.LoadNextPageHorizontal>().let(
-            loadNextPageHorizontalProcessor
-          ),
-          shared.filterIsInstance<ViewIntent.RetryLoadPageHorizontal>().let(
-            retryLoadPageHorizontalProcessor
-          ),
-          shared.filterIsInstance<ViewIntent.RetryHorizontal>().let(retryHorizontalProcessor),
-          shared.filterIsInstance<ViewIntent.Refresh>().let(refreshProcessor)
+          shared.filterIsInstance<VI.Initial>()
+            .let(initialProcessor),
+          shared.filterIsInstance<VI.LoadNextPage>()
+            .let(nextPageProcessor),
+          shared.filterIsInstance<VI.RetryLoadPage>()
+            .let(retryLoadPageProcessor),
+          shared.filterIsInstance<VI.LoadNextPageHorizontal>()
+            .let(loadNextPageHorizontalProcessor),
+          shared.filterIsInstance<VI.RetryLoadPageHorizontal>()
+            .let(retryLoadPageHorizontalProcessor),
+          shared.filterIsInstance<VI.RetryHorizontal>()
+            .let(retryHorizontalProcessor),
+          shared.filterIsInstance<VI.Refresh>()
+            .let(refreshProcessor)
         )
       }
       .let(sendSingleEvent)
@@ -125,24 +154,24 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
       changes
         .onEach { change ->
           when (change) {
-            is PhotoFirstPage.Data -> if (change.photos.isEmpty()) _singleEventSF.emit(SingleEvent.HasReachedMax)
-            is PhotoFirstPage.Error -> _singleEventSF.emit(SingleEvent.GetPhotosFailure(change.error))
+            is PhotoFirstPage.Data -> if (change.photos.isEmpty()) _singleEventChannel.send(SE.HasReachedMax)
+            is PhotoFirstPage.Error -> _singleEventChannel.send(SE.GetPhotosFailure(change.error))
             PhotoFirstPage.Loading -> Unit
             ///
-            is PhotoNextPage.Data -> if (change.photos.isEmpty()) _singleEventSF.emit(SingleEvent.HasReachedMax)
-            is PhotoNextPage.Error -> _singleEventSF.emit(SingleEvent.GetPhotosFailure(change.error))
+            is PhotoNextPage.Data -> if (change.photos.isEmpty()) _singleEventChannel.send(SE.HasReachedMax)
+            is PhotoNextPage.Error -> _singleEventChannel.send(SE.GetPhotosFailure(change.error))
             PhotoNextPage.Loading -> Unit
             ///
-            is PostFirstPage.Data -> if (change.posts.isEmpty()) _singleEventSF.emit(SingleEvent.HasReachedMaxHorizontal)
-            is PostFirstPage.Error -> _singleEventSF.emit(SingleEvent.GetPostsFailure(change.error))
+            is PostFirstPage.Data -> if (change.posts.isEmpty()) _singleEventChannel.send(SE.HasReachedMaxHorizontal)
+            is PostFirstPage.Error -> _singleEventChannel.send(SE.GetPostsFailure(change.error))
             PostFirstPage.Loading -> Unit
             ///
-            is PostNextPage.Data -> if (change.posts.isEmpty()) _singleEventSF.emit(SingleEvent.HasReachedMaxHorizontal)
-            is PostNextPage.Error -> _singleEventSF.emit(SingleEvent.GetPostsFailure(change.error))
+            is PostNextPage.Data -> if (change.posts.isEmpty()) _singleEventChannel.send(SE.HasReachedMaxHorizontal)
+            is PostNextPage.Error -> _singleEventChannel.send(SE.GetPostsFailure(change.error))
             PostNextPage.Loading -> Unit
             ///
-            is Refresh.Success -> _singleEventSF.emit(SingleEvent.RefreshSuccess)
-            is Refresh.Error -> _singleEventSF.emit(SingleEvent.RefreshFailure(change.error))
+            is Refresh.Success -> _singleEventChannel.send(SE.RefreshSuccess)
+            is Refresh.Error -> _singleEventChannel.send(SE.RefreshFailure(change.error))
             Refresh.Refreshing -> Unit
           }
         }
@@ -159,10 +188,10 @@ class MainVM @ViewModelInject constructor(private val interactor: Interactor) : 
   }
 
   private companion object {
-    val intentFilterer: FlowTransformer<ViewIntent, ViewIntent> = { intents ->
+    val intentFilterer: FlowTransformer<VI, VI> = { intents ->
       merge(
-        intents.filterIsInstance<ViewIntent.Initial>().take(1),
-        intents.filter { it !is ViewIntent.Initial }
+        intents.filterIsInstance<VI.Initial>().take(1),
+        intents.filter { it !is VI.Initial }
       )
     }
 

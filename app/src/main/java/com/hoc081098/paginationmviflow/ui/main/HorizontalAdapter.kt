@@ -33,7 +33,7 @@ private object HorizontalItemItemCallback : DiffUtil.ItemCallback<HorizontalItem
   }
 
   override fun areContentsTheSame(oldItem: HorizontalItem, newItem: HorizontalItem) =
-      oldItem == newItem
+    oldItem == newItem
 
   override fun getChangePayload(oldItem: HorizontalItem, newItem: HorizontalItem): Any? {
     return when {
@@ -45,7 +45,7 @@ private object HorizontalItemItemCallback : DiffUtil.ItemCallback<HorizontalItem
 }
 
 class HorizontalAdapter(
-    private val coroutineScope: CoroutineScope,
+  private val coroutineScope: CoroutineScope,
 ) : ListAdapter<HorizontalItem, HorizontalAdapter.VH>(HorizontalItemItemCallback) {
 
   private val retryNextPageSF = MutableSharedFlow<Unit>()
@@ -54,8 +54,14 @@ class HorizontalAdapter(
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
     return when (viewType) {
-      R.layout.recycler_item_horizontal_post -> PostVH(RecyclerItemHorizontalPostBinding.bind(itemView))
-      R.layout.recycler_item_horizontal_placeholder -> PlaceholderVH(RecyclerItemHorizontalPlaceholderBinding.bind(itemView))
+      R.layout.recycler_item_horizontal_post -> PostVH(
+        RecyclerItemHorizontalPostBinding.bind(
+          itemView
+        )
+      )
+      R.layout.recycler_item_horizontal_placeholder -> PlaceholderVH(
+        RecyclerItemHorizontalPlaceholderBinding.bind(itemView)
+      )
       else -> error("Unknown viewType=$viewType")
     }
   }
@@ -92,21 +98,22 @@ class HorizontalAdapter(
     }
   }
 
-  private inner class PlaceholderVH(private val binding: RecyclerItemHorizontalPlaceholderBinding) : VH(binding.root) {
+  private inner class PlaceholderVH(private val binding: RecyclerItemHorizontalPlaceholderBinding) :
+    VH(binding.root) {
     init {
       binding
-          .buttonRetry
-          .clicks()
-          .filter {
-            val position = bindingAdapterPosition
-            if (position == RecyclerView.NO_POSITION) {
-              false
-            } else {
-              (getItem(position) as? HorizontalItem.Placeholder)?.state is PlaceholderState.Error
-            }
+        .buttonRetry
+        .clicks()
+        .filter {
+          val position = bindingAdapterPosition
+          if (position == RecyclerView.NO_POSITION) {
+            false
+          } else {
+            (getItem(position) as? HorizontalItem.Placeholder)?.state is PlaceholderState.Error
           }
-          .onEach { retryNextPageSF.emit(Unit) }
-          .launchIn(coroutineScope)
+        }
+        .onEach { retryNextPageSF.emit(Unit) }
+        .launchIn(coroutineScope)
     }
 
     override fun bind(item: HorizontalItem) {

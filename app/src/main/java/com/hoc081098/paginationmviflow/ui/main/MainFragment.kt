@@ -10,14 +10,24 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.hoc081098.paginationmviflow.*
+import com.hoc081098.paginationmviflow.R
 import com.hoc081098.paginationmviflow.databinding.FragmentMainBinding
+import com.hoc081098.paginationmviflow.isOrientationPortrait
+import com.hoc081098.paginationmviflow.refreshes
+import com.hoc081098.paginationmviflow.scrollEvents
+import com.hoc081098.paginationmviflow.toast
 import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewIntent
 import com.hoc081098.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
 import kotlin.LazyThreadSafetyMode.NONE
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onEach
 
 @AndroidEntryPoint
 @OptIn(ExperimentalCoroutinesApi::class)

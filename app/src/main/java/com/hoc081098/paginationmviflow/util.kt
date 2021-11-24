@@ -9,13 +9,10 @@ import androidx.annotation.CheckResult
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.*
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
-import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 typealias FlowTransformer<I, O> = (Flow<I>) -> Flow<O>
 
@@ -25,14 +22,11 @@ fun Context.toast(text: CharSequence) = Toast.makeText(this, text, Toast.LENGTH_
 
 fun Fragment.toast(text: CharSequence) = requireContext().toast(text)
 
-@Suppress("NOTHING_TO_INLINE")
-inline fun <T> SharedFlow<T>.asFlow(): Flow<T> = this
-
 @OptIn(ExperimentalCoroutinesApi::class)
 @CheckResult
 fun SwipeRefreshLayout.refreshes(): Flow<Unit> {
   return callbackFlow {
-    setOnRefreshListener { tryOffer(Unit) }
+    setOnRefreshListener { trySend(Unit) }
     awaitClose { setOnRefreshListener(null) }
   }
 }
@@ -41,7 +35,7 @@ fun SwipeRefreshLayout.refreshes(): Flow<Unit> {
 @CheckResult
 fun View.clicks(): Flow<View> {
   return callbackFlow {
-    setOnClickListener { tryOffer(it) }
+    setOnClickListener { trySend(it) }
     awaitClose { setOnClickListener(null) }
   }
 }
@@ -53,7 +47,7 @@ fun RecyclerView.scrollEvents(): Flow<RecyclerViewScrollEvent> {
   return callbackFlow {
     val listener = object : RecyclerView.OnScrollListener() {
       override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-        tryOffer(
+        trySend(
           RecyclerViewScrollEvent(
             view = recyclerView,
             dx = dx,
@@ -74,80 +68,11 @@ fun ViewGroup.detaches(): Flow<Unit> {
     val listener = object : View.OnAttachStateChangeListener {
       override fun onViewAttachedToWindow(v: View) = Unit
       override fun onViewDetachedFromWindow(v: View) {
-        tryOffer(Unit)
+        trySend(Unit)
       }
     }
     addOnAttachStateChangeListener(listener)
     awaitClose { removeOnAttachStateChangeListener(listener) }
-  }
-}
-
-@OptIn(ExperimentalCoroutinesApi::class)
-fun <T, R> Flow<T>.takeUntil(other: Flow<R>): Flow<T> {
-  return channelFlow {
-    launch {
-      other.take(1).collect { close() }
-    }
-
-    launch {
-      collect { send(it) }
-    }
-  }
-}
-
-@OptIn(ExperimentalCoroutinesApi::class)
-fun <T> SendChannel<T>.tryOffer(t: T): Boolean = if (isClosedForSend) false else offer(t)
-
-fun <T, R> Flow<T>.flatMapFirst(transform: suspend (value: T) -> Flow<R>): Flow<R> =
-  map(transform).flattenFirst()
-
-@OptIn(ExperimentalCoroutinesApi::class, ExperimentalStdlibApi::class)
-fun <T> Flow<Flow<T>>.flattenFirst(): Flow<T> = channelFlow {
-  val outerScope = this
-  val busy = AtomicBoolean(false)
-  collect { inner ->
-    if (busy.compareAndSet(false, true)) {
-      launch {
-        try {
-          inner.collect { outerScope.send(it) }
-          busy.set(false)
-        } catch (e: CancellationException) {
-          // cancel outer scope on cancellation exception, too
-          outerScope.cancel(e)
-        }
-      }
-    }
-  }
-}
-
-fun <A, B> Flow<A>.withLatestFrom(other: Flow<B>): Flow<Pair<A, B>> =
-  withLatestFrom(other) { a, b -> a to b }
-
-private object UNINITIALIZED
-
-@OptIn(ExperimentalStdlibApi::class)
-fun <A, B, R> Flow<A>.withLatestFrom(other: Flow<B>, transform: suspend (A, B) -> R): Flow<R> {
-  return flow {
-    coroutineScope {
-      val latestB = AtomicReference<Any>(UNINITIALIZED)
-      val outerScope = this
-
-      launch {
-        try {
-          other.collect { latestB.set(it) }
-        } catch (e: CancellationException) {
-          outerScope.cancel(e) // cancel outer scope on cancellation exception, too
-        }
-      }
-
-      collect { a ->
-        val b = latestB.get()
-        if (b != UNINITIALIZED) {
-          @Suppress("UNCHECKED_CAST")
-          emit(transform(a, b as B))
-        }
-      }
-    }
   }
 }
 
