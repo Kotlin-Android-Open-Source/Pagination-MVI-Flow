@@ -73,7 +73,7 @@ dependencies {
     implementation "androidx.navigation:navigation-fragment-ktx:$nav_version"
     implementation "androidx.navigation:navigation-ui-ktx:$nav_version"
 
-    implementation 'com.github.hoc081098:ViewBindingDelegate:1.0.0-alpha01'
+    implementation 'com.github.hoc081098:ViewBindingDelegate:1.2.0'
 
     testImplementation 'junit:junit:4.13.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
