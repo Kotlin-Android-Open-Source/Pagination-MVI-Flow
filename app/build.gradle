@@ -58,7 +58,7 @@ dependencies {
 
     // Navigation
     implementation 'androidx.navigation:navigation-fragment-ktx:2.3.1'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.3.1'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.3.5'
 
     // Retrofit, Moshi Converter, OkHttp Logging
     implementation 'com.squareup.moshi:moshi-kotlin:1.10.0'
