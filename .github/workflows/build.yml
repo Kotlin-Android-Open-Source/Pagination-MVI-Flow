@@ -24,10 +24,10 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
     
-    - name: Spotless check
-      uses: gradle/gradle-build-action@v2
-      with:
-        arguments: spotlessCheck
+#     - name: Spotless check
+#       uses: gradle/gradle-build-action@v2
+#       with:
+#         arguments: spotlessCheck
     
     - name: Build debug APK
       uses: gradle/gradle-build-action@v2
