@@ -54,7 +54,7 @@ dependencies {
     implementation "com.google.dagger:hilt-android:2.40.2"
     kapt "com.google.dagger:hilt-android-compiler:2.40.2"
     implementation 'androidx.hilt:hilt-lifecycle-viewmodel:1.0.0-alpha02'
-    kapt 'androidx.hilt:hilt-compiler:1.0.0-alpha02'
+    kapt 'androidx.hilt:hilt-compiler:1.0.0'
 
     // Navigation
     implementation 'androidx.navigation:navigation-fragment-ktx:2.3.1'
