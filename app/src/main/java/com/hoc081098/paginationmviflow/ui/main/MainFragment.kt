@@ -163,7 +163,7 @@ class MainFragment : Fragment(R.layout.fragment_main) {
         // .throttleFirst(500, TimeUnit.MILLISECONDS)
         .map { ViewIntent.RetryHorizontal },
     )
-      .onEach { mainVM.processIntent(it) }
+      .onEach(mainVM::processIntent)
       .launchIn(viewLifecycleOwner.lifecycleScope)
   }
 
