@@ -378,6 +378,28 @@ interface MainContract {
         }
       }
     }
+
+    fun toEvent(): SingleEvent? = when (this) {
+      is PhotoFirstPage.Data -> if (photos.isEmpty()) SingleEvent.HasReachedMax else null
+      is PhotoFirstPage.Error -> SingleEvent.GetPhotosFailure(error)
+      PhotoFirstPage.Loading -> null
+      //
+      is PhotoNextPage.Data -> if (photos.isEmpty()) SingleEvent.HasReachedMax else null
+      is PhotoNextPage.Error -> SingleEvent.GetPhotosFailure(error)
+      PhotoNextPage.Loading -> null
+      //
+      is PostFirstPage.Data -> if (posts.isEmpty()) SingleEvent.HasReachedMaxHorizontal else null
+      is PostFirstPage.Error -> SingleEvent.GetPostsFailure(error)
+      PostFirstPage.Loading -> null
+      //
+      is PostNextPage.Data -> if (posts.isEmpty()) SingleEvent.HasReachedMaxHorizontal else null
+      is PostNextPage.Error -> SingleEvent.GetPostsFailure(error)
+      PostNextPage.Loading -> null
+      //
+      is Refresh.Success -> SingleEvent.RefreshSuccess
+      is Refresh.Error -> SingleEvent.RefreshFailure(error)
+      Refresh.Refreshing -> null
+    }
   }
 
   sealed class SingleEvent {

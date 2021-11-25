@@ -5,11 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.hoc081098.paginationmviflow.FlowTransformer
 import com.hoc081098.paginationmviflow.pipe
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange
-import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PhotoFirstPage
-import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PhotoNextPage
-import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PostFirstPage
-import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PostNextPage
-import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.Refresh
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -44,14 +39,14 @@ class MainVM @Inject constructor(
 ) : ViewModel() {
   private val initialVS = VS.initial()
 
-  private val _stateSF = MutableStateFlow(initialVS)
+  private val _stateFlow = MutableStateFlow(initialVS)
   private val _singleEventChannel = Channel<SE>(Channel.UNLIMITED)
-  private val _intentSF = MutableSharedFlow<VI>(extraBufferCapacity = 64)
+  private val _intentFlow = MutableSharedFlow<VI>(extraBufferCapacity = 64)
 
-  val stateFlow: StateFlow<VS> get() = _stateSF.asStateFlow()
+  val stateFlow: StateFlow<VS> get() = _stateFlow.asStateFlow()
   val singleEventFlow: Flow<SE> get() = _singleEventChannel.receiveAsFlow()
 
-  suspend fun processIntent(intent: VI) = _intentSF.emit(intent)
+  suspend fun processIntent(intent: VI) = _intentFlow.emit(intent)
 
   private val toPartialStateChanges: FlowTransformer<VI, PartialStateChange> =
     FlowTransformer { intents ->
@@ -79,39 +74,18 @@ class MainVM @Inject constructor(
 
   private val sendSingleEvent: FlowTransformer<PartialStateChange, PartialStateChange> =
     FlowTransformer { changes ->
-      changes
-        .onEach { change ->
-          when (change) {
-            is PhotoFirstPage.Data -> if (change.photos.isEmpty()) _singleEventChannel.send(SE.HasReachedMax)
-            is PhotoFirstPage.Error -> _singleEventChannel.send(SE.GetPhotosFailure(change.error))
-            PhotoFirstPage.Loading -> Unit
-            //
-            is PhotoNextPage.Data -> if (change.photos.isEmpty()) _singleEventChannel.send(SE.HasReachedMax)
-            is PhotoNextPage.Error -> _singleEventChannel.send(SE.GetPhotosFailure(change.error))
-            PhotoNextPage.Loading -> Unit
-            //
-            is PostFirstPage.Data -> if (change.posts.isEmpty()) _singleEventChannel.send(SE.HasReachedMaxHorizontal)
-            is PostFirstPage.Error -> _singleEventChannel.send(SE.GetPostsFailure(change.error))
-            PostFirstPage.Loading -> Unit
-            //
-            is PostNextPage.Data -> if (change.posts.isEmpty()) _singleEventChannel.send(SE.HasReachedMaxHorizontal)
-            is PostNextPage.Error -> _singleEventChannel.send(SE.GetPostsFailure(change.error))
-            PostNextPage.Loading -> Unit
-            //
-            is Refresh.Success -> _singleEventChannel.send(SE.RefreshSuccess)
-            is Refresh.Error -> _singleEventChannel.send(SE.RefreshFailure(change.error))
-            Refresh.Refreshing -> Unit
-          }
-        }
+      changes.onEach {
+        _singleEventChannel.send(it.toEvent() ?: return@onEach)
+      }
     }
 
   init {
-    _intentSF
+    _intentFlow
       .pipe(intentFilterer)
       .pipe(toPartialStateChanges)
       .pipe(sendSingleEvent)
       .scan(initialVS) { vs, change -> change.reduce(vs) }
-      .onEach { _stateSF.value = it }
+      .onEach { _stateFlow.value = it }
       .launchIn(viewModelScope)
   }
 
