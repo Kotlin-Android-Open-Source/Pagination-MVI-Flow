@@ -10,6 +10,8 @@
 - SharedFlow, StateFlow sample
 - MVI sample
 
+## [Debug APK](https://nightly.link/Kotlin-Android-Open-Source/Pagination-MVI-Flow/workflows/build/master/app-debug.zip)
+
 <p align="center">
     <img src="demo.gif" height="480" >
 </p>
