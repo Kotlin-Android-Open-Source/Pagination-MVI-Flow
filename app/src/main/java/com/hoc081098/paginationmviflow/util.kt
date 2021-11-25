@@ -21,7 +21,13 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-typealias FlowTransformer<I, O> = (Flow<I>) -> Flow<O>
+fun interface FlowTransformer<I, O> {
+  fun transform(input: Flow<I>): Flow<O>
+}
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun <I, O> Flow<I>.pipe(transformer: FlowTransformer<I, O>) =
+  transformer.transform(this)
 
 val Context.isOrientationPortrait get() = this.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
