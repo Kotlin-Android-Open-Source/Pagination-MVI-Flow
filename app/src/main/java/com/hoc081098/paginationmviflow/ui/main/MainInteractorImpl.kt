@@ -1,6 +1,8 @@
 package com.hoc081098.paginationmviflow.ui.main
 
 import android.util.Log
+import com.hoc081098.paginationmviflow.domain.entity.Photo
+import com.hoc081098.paginationmviflow.domain.entity.Post
 import com.hoc081098.paginationmviflow.domain.usecase.GetPhotosUseCase
 import com.hoc081098.paginationmviflow.domain.usecase.GetPostsUseCase
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PhotoFirstPage
@@ -10,7 +12,9 @@ import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.P
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.Refresh
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PhotoVS
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PostVS
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -74,13 +78,15 @@ class MainInteractorImpl @Inject constructor(
     limitPhoto: Int
   ): Flow<Refresh> = flow {
     coroutineScope {
-      val async1 = async { getPostsUseCase(limit = limitPost, start = 0) }
-      val async2 = async { getPhotosUseCase(limit = limitPhoto, start = 0) }
+      val async1: Deferred<List<Post>> = async { getPostsUseCase(limit = limitPost, start = 0) }
+      val async2: Deferred<List<Photo>> = async { getPhotosUseCase(limit = limitPhoto, start = 0) }
+      val results = awaitAll(async1, async2)
 
+      @Suppress("UNCHECKED_CAST")
       emit(
         Refresh.Success(
-          posts = async1.await().map(::PostVS),
-          photos = async2.await().map(::PhotoVS)
+          posts = (results[0] as List<Post>).map(::PostVS),
+          photos = (results[1] as List<Photo>).map(::PhotoVS)
         ) as Refresh
       )
     }
