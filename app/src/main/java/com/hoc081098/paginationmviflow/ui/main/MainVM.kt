@@ -6,8 +6,6 @@ import com.hoc081098.paginationmviflow.FlowTransformer
 import com.hoc081098.paginationmviflow.pipe
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,10 +27,6 @@ import com.hoc081098.paginationmviflow.ui.main.MainContract.SingleEvent as SE
 import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewIntent as VI
 import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewState as VS
 
-@OptIn(
-  ExperimentalCoroutinesApi::class,
-  FlowPreview::class
-)
 @HiltViewModel
 class MainVM @Inject constructor(
   private val mainProcessors: MainProcessors,

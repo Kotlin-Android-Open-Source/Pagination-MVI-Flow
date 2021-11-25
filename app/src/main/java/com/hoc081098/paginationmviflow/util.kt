@@ -13,7 +13,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -22,9 +21,11 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 fun interface FlowTransformer<I, O> {
+  @CheckResult
   fun transform(input: Flow<I>): Flow<O>
 }
 
+@CheckResult
 @Suppress("NOTHING_TO_INLINE")
 inline fun <I, O> Flow<I>.pipe(transformer: FlowTransformer<I, O>) =
   transformer.transform(this)
@@ -35,7 +36,6 @@ fun Context.toast(text: CharSequence) = Toast.makeText(this, text, Toast.LENGTH_
 
 fun Fragment.toast(text: CharSequence) = requireContext().toast(text)
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @CheckResult
 fun SwipeRefreshLayout.refreshes(): Flow<Unit> {
   return callbackFlow {
@@ -44,7 +44,6 @@ fun SwipeRefreshLayout.refreshes(): Flow<Unit> {
   }
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @CheckResult
 fun View.clicks(): Flow<View> {
   return callbackFlow {
@@ -55,7 +54,7 @@ fun View.clicks(): Flow<View> {
 
 data class RecyclerViewScrollEvent(val view: RecyclerView, val dx: Int, val dy: Int)
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@CheckResult
 fun RecyclerView.scrollEvents(): Flow<RecyclerViewScrollEvent> {
   return callbackFlow {
     val listener = object : RecyclerView.OnScrollListener() {
@@ -74,7 +73,7 @@ fun RecyclerView.scrollEvents(): Flow<RecyclerViewScrollEvent> {
   }
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@CheckResult
 fun ViewGroup.detaches(): Flow<Unit> {
   return callbackFlow {
     val listener = object : View.OnAttachStateChangeListener {
