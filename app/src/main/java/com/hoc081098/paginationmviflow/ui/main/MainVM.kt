@@ -53,7 +53,7 @@ class MainVM @Inject constructor(
 
   suspend fun processIntent(intent: VI) = _intentSF.emit(intent)
 
-  private val toPartialStateChange: FlowTransformer<VI, PartialStateChange> =
+  private val toPartialStateChanges: FlowTransformer<VI, PartialStateChange> =
     FlowTransformer { intents ->
       intents
         .shareIn(viewModelScope, SharingStarted.WhileSubscribed())
@@ -75,7 +75,6 @@ class MainVM @Inject constructor(
               .pipe(mainProcessors.getRefreshProcessor(stateFlow))
           )
         }
-        .pipe(sendSingleEvent)
     }
 
   private val sendSingleEvent: FlowTransformer<PartialStateChange, PartialStateChange> =
@@ -109,7 +108,8 @@ class MainVM @Inject constructor(
   init {
     _intentSF
       .pipe(intentFilterer)
-      .pipe(toPartialStateChange)
+      .pipe(toPartialStateChanges)
+      .pipe(sendSingleEvent)
       .scan(initialVS) { vs, change -> change.reduce(vs) }
       .onEach { _stateSF.value = it }
       .launchIn(viewModelScope)
