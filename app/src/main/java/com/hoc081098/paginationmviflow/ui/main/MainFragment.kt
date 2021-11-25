@@ -17,6 +17,7 @@ import com.hoc081098.paginationmviflow.isOrientationPortrait
 import com.hoc081098.paginationmviflow.refreshes
 import com.hoc081098.paginationmviflow.scrollEvents
 import com.hoc081098.paginationmviflow.toast
+import com.hoc081098.paginationmviflow.ui.main.MainContract.SingleEvent
 import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewIntent
 import com.hoc081098.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -167,25 +168,25 @@ class MainFragment : Fragment(R.layout.fragment_main) {
       .launchIn(viewLifecycleOwner.lifecycleScope)
   }
 
-  private suspend fun handleSingleEvent(event: MainContract.SingleEvent) {
+  private suspend fun handleSingleEvent(event: SingleEvent) {
     return when (event) {
-      MainContract.SingleEvent.RefreshSuccess -> {
+      SingleEvent.RefreshSuccess -> {
         toast("Refresh success")
         adapter.scrollHorizontalListToFirst()
       }
-      is MainContract.SingleEvent.RefreshFailure -> {
+      is SingleEvent.RefreshFailure -> {
         toast("Refresh failure: ${event.error.message ?: ""}")
       }
-      is MainContract.SingleEvent.GetPostsFailure -> {
+      is SingleEvent.GetPostsFailure -> {
         toast("Get posts failure: ${event.error.message ?: ""}")
       }
-      MainContract.SingleEvent.HasReachedMaxHorizontal -> {
+      SingleEvent.HasReachedMaxHorizontal -> {
         toast("Got all posts")
       }
-      is MainContract.SingleEvent.GetPhotosFailure -> {
+      is SingleEvent.GetPhotosFailure -> {
         toast("Get photos failure: ${event.error.message ?: ""}")
       }
-      MainContract.SingleEvent.HasReachedMax -> {
+      SingleEvent.HasReachedMax -> {
         toast("Got all photos")
       }
     }

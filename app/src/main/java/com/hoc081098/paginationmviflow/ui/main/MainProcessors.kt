@@ -3,6 +3,7 @@ package com.hoc081098.paginationmviflow.ui.main
 import com.hoc081098.flowext.flatMapFirst
 import com.hoc081098.flowext.withLatestFrom
 import com.hoc081098.paginationmviflow.FlowTransformer
+import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,7 @@ import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewState as VS
 class MainProcessors @Inject constructor(
   private val interactor: MainContract.Interactor,
 ) {
-  internal fun getInitialProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.Initial, MainContract.PartialStateChange> =
+  internal fun getInitialProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.Initial, PartialStateChange> =
     FlowTransformer { intents ->
       intents
         .withLatestFrom(stateFlow)
@@ -31,7 +32,7 @@ class MainProcessors @Inject constructor(
         }
     }
 
-  internal fun getNextPageProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.LoadNextPage, MainContract.PartialStateChange> =
+  internal fun getNextPageProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.LoadNextPage, PartialStateChange> =
     FlowTransformer { intents ->
       intents
         .withLatestFrom(stateFlow)
@@ -45,7 +46,7 @@ class MainProcessors @Inject constructor(
         }
     }
 
-  internal fun getRetryLoadPageProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.RetryLoadPage, MainContract.PartialStateChange> =
+  internal fun getRetryLoadPageProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.RetryLoadPage, PartialStateChange> =
     FlowTransformer { intents ->
       intents
         .withLatestFrom(stateFlow)
@@ -59,7 +60,7 @@ class MainProcessors @Inject constructor(
         }
     }
 
-  internal fun getLoadNextPageHorizontalProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.LoadNextPageHorizontal, MainContract.PartialStateChange> =
+  internal fun getLoadNextPageHorizontalProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.LoadNextPageHorizontal, PartialStateChange> =
     FlowTransformer { intents ->
       intents
         .withLatestFrom(stateFlow)
@@ -68,7 +69,7 @@ class MainProcessors @Inject constructor(
         .flatMapFirst { interactor.postNextPageChanges(start = it, limit = MainVM.POST_PAGE_SIZE) }
     }
 
-  internal fun getRetryLoadPageHorizontalProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.RetryLoadPageHorizontal, MainContract.PartialStateChange> =
+  internal fun getRetryLoadPageHorizontalProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.RetryLoadPageHorizontal, PartialStateChange> =
     FlowTransformer { intents ->
       intents
         .withLatestFrom(stateFlow)
@@ -77,7 +78,7 @@ class MainProcessors @Inject constructor(
         .flatMapFirst { interactor.postNextPageChanges(start = it, limit = MainVM.POST_PAGE_SIZE) }
     }
 
-  internal fun getRetryHorizontalProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.RetryHorizontal, MainContract.PartialStateChange> =
+  internal fun getRetryHorizontalProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.RetryHorizontal, PartialStateChange> =
     FlowTransformer { intents ->
       intents
         .withLatestFrom(stateFlow)
@@ -85,7 +86,7 @@ class MainProcessors @Inject constructor(
         .flatMapFirst { interactor.postFirstPageChanges(limit = MainVM.POST_PAGE_SIZE) }
     }
 
-  internal fun getRefreshProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.Refresh, MainContract.PartialStateChange> =
+  internal fun getRefreshProcessor(stateFlow: StateFlow<VS>): FlowTransformer<VI.Refresh, PartialStateChange> =
     FlowTransformer { intents ->
       intents
         .withLatestFrom(stateFlow)
