@@ -1,11 +1,11 @@
 package com.hoc081098.paginationmviflow.ui.main
 
-import com.hoc081098.paginationmviflow.domain.entity.Photo as PhotoDomain
-import com.hoc081098.paginationmviflow.domain.entity.Post as PostDomain
 import androidx.annotation.LayoutRes
 import com.hoc081098.paginationmviflow.R
 import com.hoc081098.paginationmviflow.ui.main.MainContract.Item.HorizontalList.HorizontalItem
 import kotlinx.coroutines.flow.Flow
+import com.hoc081098.paginationmviflow.domain.entity.Photo as PhotoDomain
+import com.hoc081098.paginationmviflow.domain.entity.Post as PostDomain
 
 interface MainContract {
   data class ViewState(
@@ -21,13 +21,13 @@ interface MainContract {
         return !horizontalList.isLoading &&
           horizontalList.error === null &&
           (items.singleOrNull { it is Item.Placeholder } as? Item.Placeholder)
-            ?.state == PlaceholderState.Idle
+          ?.state == PlaceholderState.Idle
       }
 
     fun canLoadNextPage(): Boolean {
       return photoItems.isNotEmpty() &&
         (items.singleOrNull { it is Item.Placeholder } as? Item.Placeholder)
-          ?.state == PlaceholderState.Idle
+        ?.state == PlaceholderState.Idle
     }
 
     fun shouldRetry(): Boolean {
@@ -42,7 +42,7 @@ interface MainContract {
         horizontalList.error == null &&
         horizontalList.postItems.isNotEmpty() &&
         (horizontalList.items.singleOrNull { it is HorizontalItem.Placeholder } as? HorizontalItem.Placeholder)
-          ?.state == PlaceholderState.Idle
+        ?.state == PlaceholderState.Idle
     }
 
     fun getHorizontalListCount(): Int {
@@ -103,7 +103,6 @@ interface MainContract {
         data class Placeholder(val state: PlaceholderState) :
           HorizontalItem(R.layout.recycler_item_horizontal_placeholder)
       }
-
     }
 
     data class Photo(val photo: PhotoVS) : Item(R.layout.recycler_item_photo)
@@ -183,20 +182,20 @@ interface MainContract {
           is Data -> {
             val photoItems = this.photos.map { Item.Photo(it) }
             vs.copy(
-              items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
-                + photoItems
-                + Item.Placeholder(PlaceholderState.Idle),
+              items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder } +
+                photoItems +
+                Item.Placeholder(PlaceholderState.Idle),
               photoItems = photoItems
             )
           }
           is Error -> vs.copy(
-            items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
-              + Item.Placeholder(PlaceholderState.Error(this.error)),
+            items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder } +
+              Item.Placeholder(PlaceholderState.Error(this.error)),
             photoItems = emptyList()
           )
           Loading -> vs.copy(
-            items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
-              + Item.Placeholder(PlaceholderState.Loading)
+            items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder } +
+              Item.Placeholder(PlaceholderState.Loading)
           )
         }
       }

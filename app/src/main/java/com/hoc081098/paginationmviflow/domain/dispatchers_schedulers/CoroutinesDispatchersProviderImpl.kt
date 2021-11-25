@@ -1,9 +1,9 @@
 package com.hoc081098.paginationmviflow.domain.dispatchers_schedulers
 
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @Singleton
 class CoroutinesDispatchersProviderImpl @Inject constructor() : CoroutinesDispatchersProvider {

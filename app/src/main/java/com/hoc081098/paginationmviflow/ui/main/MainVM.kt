@@ -1,8 +1,5 @@
 package com.hoc081098.paginationmviflow.ui.main
 
-import com.hoc081098.paginationmviflow.ui.main.MainContract.SingleEvent as SE
-import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewIntent as VI
-import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewState as VS
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hoc081098.flowext.flatMapFirst
@@ -16,7 +13,6 @@ import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.P
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.PostNextPage
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.Refresh
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
@@ -37,6 +33,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.take
+import javax.inject.Inject
+import com.hoc081098.paginationmviflow.ui.main.MainContract.SingleEvent as SE
+import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewIntent as VI
+import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewState as VS
 
 @OptIn(
   ExperimentalCoroutinesApi::class,
@@ -57,16 +57,16 @@ class MainVM @Inject constructor(private val interactor: Interactor) : ViewModel
 
   private val initialProcessor:
     FlowTransformer<VI.Initial, PartialStateChange> = { intents ->
-    intents
-      .withLatestFrom(_stateSF)
-      .filter { (_, vs) -> vs.photoItems.isEmpty() }
-      .flatMapMerge {
-        merge(
-          interactor.photoFirstPageChanges(limit = PHOTO_PAGE_SIZE),
-          interactor.postFirstPageChanges(limit = POST_PAGE_SIZE)
-        )
-      }
-  }
+      intents
+        .withLatestFrom(_stateSF)
+        .filter { (_, vs) -> vs.photoItems.isEmpty() }
+        .flatMapMerge {
+          merge(
+            interactor.photoFirstPageChanges(limit = PHOTO_PAGE_SIZE),
+            interactor.postFirstPageChanges(limit = POST_PAGE_SIZE)
+          )
+        }
+    }
 
   private val nextPageProcessor: FlowTransformer<VI.LoadNextPage, PartialStateChange> =
     { intents ->
@@ -157,26 +157,25 @@ class MainVM @Inject constructor(private val interactor: Interactor) : ViewModel
             is PhotoFirstPage.Data -> if (change.photos.isEmpty()) _singleEventChannel.send(SE.HasReachedMax)
             is PhotoFirstPage.Error -> _singleEventChannel.send(SE.GetPhotosFailure(change.error))
             PhotoFirstPage.Loading -> Unit
-            ///
+            // /
             is PhotoNextPage.Data -> if (change.photos.isEmpty()) _singleEventChannel.send(SE.HasReachedMax)
             is PhotoNextPage.Error -> _singleEventChannel.send(SE.GetPhotosFailure(change.error))
             PhotoNextPage.Loading -> Unit
-            ///
+            // /
             is PostFirstPage.Data -> if (change.posts.isEmpty()) _singleEventChannel.send(SE.HasReachedMaxHorizontal)
             is PostFirstPage.Error -> _singleEventChannel.send(SE.GetPostsFailure(change.error))
             PostFirstPage.Loading -> Unit
-            ///
+            // /
             is PostNextPage.Data -> if (change.posts.isEmpty()) _singleEventChannel.send(SE.HasReachedMaxHorizontal)
             is PostNextPage.Error -> _singleEventChannel.send(SE.GetPostsFailure(change.error))
             PostNextPage.Loading -> Unit
-            ///
+            // /
             is Refresh.Success -> _singleEventChannel.send(SE.RefreshSuccess)
             is Refresh.Error -> _singleEventChannel.send(SE.RefreshFailure(change.error))
             Refresh.Refreshing -> Unit
           }
         }
     }
-
 
   init {
     _intentSF
@@ -199,4 +198,3 @@ class MainVM @Inject constructor(private val interactor: Interactor) : ViewModel
     const val POST_PAGE_SIZE = 10
   }
 }
-

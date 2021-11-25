@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.hoc081098.paginationmviflow.R
+import com.hoc081098.paginationmviflow.collectInViewLifecycle
 import com.hoc081098.paginationmviflow.databinding.FragmentMainBinding
 import com.hoc081098.paginationmviflow.isOrientationPortrait
 import com.hoc081098.paginationmviflow.refreshes
@@ -19,21 +20,23 @@ import com.hoc081098.paginationmviflow.toast
 import com.hoc081098.paginationmviflow.ui.main.MainContract.ViewIntent
 import com.hoc081098.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlin.LazyThreadSafetyMode.NONE
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlin.LazyThreadSafetyMode.NONE
 
 @AndroidEntryPoint
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainFragment : Fragment(R.layout.fragment_main) {
   private val mainVM by viewModels<MainVM>()
-  private val binding by viewBinding<FragmentMainBinding>()
+  private val binding by viewBinding<FragmentMainBinding> {
+    recycler.adapter = null
+  }
 
   private inline val maxSpanCount get() = if (requireContext().isOrientationPortrait) 2 else 4
   private inline val visibleThreshold get() = 2 * maxSpanCount + 1
@@ -118,60 +121,50 @@ class MainFragment : Fragment(R.layout.fragment_main) {
   }
 
   private fun bindVM() {
-    viewLifecycleOwner.lifecycleScope.launchWhenStarted {
-      val swipeRefresh = binding.swipeRefresh
+    val swipeRefresh = binding.swipeRefresh
 
-      mainVM.stateFlow
-        .onEach { vs ->
-          Log.d("###", "${vs.isRefreshing} ${vs.enableRefresh}")
+    mainVM.stateFlow.collectInViewLifecycle(this) { vs ->
+      Log.d("###", "${vs.isRefreshing} ${vs.enableRefresh}")
 
-          adapter.submitList(vs.items)
+      adapter.submitList(vs.items)
 
-          if (vs.isRefreshing) {
-            swipeRefresh.post { swipeRefresh.isRefreshing = true }
-          } else {
-            swipeRefresh.isRefreshing = false
-          }
-          swipeRefresh.isEnabled = vs.enableRefresh
-        }
-        .collect()
+      if (vs.isRefreshing) {
+        swipeRefresh.post { swipeRefresh.isRefreshing = true }
+      } else {
+        swipeRefresh.isRefreshing = false
+      }
+      swipeRefresh.isEnabled = vs.enableRefresh
     }
 
+    mainVM
+      .singleEventFlow
+      .collectInViewLifecycle(this) { handleSingleEvent(it) }
 
-    viewLifecycleOwner.lifecycleScope.launchWhenStarted {
-      mainVM
-        .singleEventFlow
-        .onEach(::handleSingleEvent)
-        .collect()
-    }
-
-    viewLifecycleOwner.lifecycleScope.launchWhenStarted {
-      merge(
-        flowOf(ViewIntent.Initial),
-        loadNextPageIntent(),
-        binding.swipeRefresh.refreshes().map { ViewIntent.Refresh },
-        adapter
-          .retryFlow
-          // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
-          //.throttleFirst(500, TimeUnit.MILLISECONDS)
-          .map { ViewIntent.RetryLoadPage },
-        adapter
-          .loadNextPageHorizontalFlow
-          .map { ViewIntent.LoadNextPageHorizontal },
-        adapter
-          .retryNextPageHorizontalFlow
-          // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
-          //.throttleFirst(500, TimeUnit.MILLISECONDS)
-          .map { ViewIntent.RetryLoadPageHorizontal },
-        adapter
-          .retryHorizontalFlow
-          // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
-          //.throttleFirst(500, TimeUnit.MILLISECONDS)
-          .map { ViewIntent.RetryHorizontal },
-      )
-        .onEach { mainVM.processIntent(it) }
-        .collect()
-    }
+    merge(
+      flowOf(ViewIntent.Initial),
+      loadNextPageIntent(),
+      binding.swipeRefresh.refreshes().map { ViewIntent.Refresh },
+      adapter
+        .retryFlow
+        // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
+        // .throttleFirst(500, TimeUnit.MILLISECONDS)
+        .map { ViewIntent.RetryLoadPage },
+      adapter
+        .loadNextPageHorizontalFlow
+        .map { ViewIntent.LoadNextPageHorizontal },
+      adapter
+        .retryNextPageHorizontalFlow
+        // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
+        // .throttleFirst(500, TimeUnit.MILLISECONDS)
+        .map { ViewIntent.RetryLoadPageHorizontal },
+      adapter
+        .retryHorizontalFlow
+        // TODO: https://github.com/Kotlin/kotlinx.coroutines/pull/2128#issuecomment-655944187
+        // .throttleFirst(500, TimeUnit.MILLISECONDS)
+        .map { ViewIntent.RetryHorizontal },
+    )
+      .onEach { mainVM.processIntent(it) }
+      .launchIn(viewLifecycleOwner.lifecycleScope)
   }
 
   private suspend fun handleSingleEvent(event: MainContract.SingleEvent) {
@@ -181,22 +174,16 @@ class MainFragment : Fragment(R.layout.fragment_main) {
         adapter.scrollHorizontalListToFirst()
       }
       is MainContract.SingleEvent.RefreshFailure -> {
-        toast(
-          "Refresh failure: ${event.error.message ?: ""}"
-        )
+        toast("Refresh failure: ${event.error.message ?: ""}")
       }
       is MainContract.SingleEvent.GetPostsFailure -> {
-        toast(
-          "Get posts failure: ${event.error.message ?: ""}"
-        )
+        toast("Get posts failure: ${event.error.message ?: ""}")
       }
       MainContract.SingleEvent.HasReachedMaxHorizontal -> {
         toast("Got all posts")
       }
       is MainContract.SingleEvent.GetPhotosFailure -> {
-        toast(
-          "Get photos failure: ${event.error.message ?: ""}"
-        )
+        toast("Get photos failure: ${event.error.message ?: ""}")
       }
       MainContract.SingleEvent.HasReachedMax -> {
         toast("Got all photos")
@@ -212,11 +199,5 @@ class MainFragment : Fragment(R.layout.fragment_main) {
         dy > 0 && layoutManager.findLastVisibleItemPosition() + visibleThreshold >= layoutManager.itemCount
       }
       .map { ViewIntent.LoadNextPage }
-  }
-
-  override fun onDestroyView() {
-    super.onDestroyView()
-
-    binding.recycler.adapter = null
   }
 }

@@ -10,7 +10,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.hoc081098.paginationmviflow.R
-import com.hoc081098.paginationmviflow.asFlow
 import com.hoc081098.paginationmviflow.clicks
 import com.hoc081098.paginationmviflow.databinding.RecyclerItemHorizontalPlaceholderBinding
 import com.hoc081098.paginationmviflow.databinding.RecyclerItemHorizontalPostBinding
@@ -19,6 +18,8 @@ import com.hoc081098.paginationmviflow.ui.main.MainContract.PlaceholderState
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PostVS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -49,7 +50,7 @@ class HorizontalAdapter(
 ) : ListAdapter<HorizontalItem, HorizontalAdapter.VH>(HorizontalItemItemCallback) {
 
   private val retryNextPageSF = MutableSharedFlow<Unit>()
-  val retryNextPageFlow get() = retryNextPageSF.asFlow()
+  val retryNextPageFlow: SharedFlow<Unit> get() = retryNextPageSF.asSharedFlow()
 
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)

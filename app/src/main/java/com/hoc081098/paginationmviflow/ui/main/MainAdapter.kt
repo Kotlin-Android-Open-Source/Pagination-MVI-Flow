@@ -13,19 +13,21 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
+import com.hoc081098.flowext.takeUntil
 import com.hoc081098.paginationmviflow.R
-import com.hoc081098.paginationmviflow.asFlow
 import com.hoc081098.paginationmviflow.clicks
 import com.hoc081098.paginationmviflow.databinding.RecyclerItemHorizontalListBinding
 import com.hoc081098.paginationmviflow.databinding.RecyclerItemPhotoBinding
 import com.hoc081098.paginationmviflow.databinding.RecyclerItemPlaceholderBinding
 import com.hoc081098.paginationmviflow.detaches
 import com.hoc081098.paginationmviflow.scrollEvents
-import com.hoc081098.paginationmviflow.takeUntil
 import com.hoc081098.paginationmviflow.ui.main.MainContract.Item
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PlaceholderState
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -61,16 +63,16 @@ class MainAdapter(
   private var layoutManagerSavedState: Parcelable? = null
 
   private val retrySF = MutableSharedFlow<Unit>()
-  val retryFlow get() = retrySF.asFlow()
+  val retryFlow: SharedFlow<Unit> get() = retrySF.asSharedFlow()
 
   private val loadNextPageHorizontalSF = MutableSharedFlow<Unit>()
-  val loadNextPageHorizontalFlow get() = loadNextPageHorizontalSF.asFlow()
+  val loadNextPageHorizontalFlow: SharedFlow<Unit> get() = loadNextPageHorizontalSF.asSharedFlow()
 
   private val retryNextPageHorizontalSF = MutableSharedFlow<Unit>()
-  val retryNextPageHorizontalFlow get() = retryNextPageHorizontalSF.asFlow()
+  val retryNextPageHorizontalFlow: SharedFlow<Unit> get() = retryNextPageHorizontalSF.asSharedFlow()
 
   private val retryHorizontalSF = MutableSharedFlow<Unit>()
-  val retryHorizontalFlow get() = retryHorizontalSF.asFlow()
+  val retryHorizontalFlow: SharedFlow<Unit> get() = retryHorizontalSF.asSharedFlow()
 
   /**
    *
@@ -135,6 +137,7 @@ class MainAdapter(
     }
   }
 
+  @OptIn(ExperimentalCoroutinesApi::class)
   private inner class PlaceHolderVH(
     private val binding: RecyclerItemPlaceholderBinding,
     parent: ViewGroup
@@ -185,6 +188,7 @@ class MainAdapter(
     }
   }
 
+  @OptIn(ExperimentalCoroutinesApi::class)
   private inner class HorizontalListVH(
     private val binding: RecyclerItemHorizontalListBinding,
     parent: ViewGroup

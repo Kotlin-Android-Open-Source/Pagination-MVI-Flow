@@ -7,12 +7,19 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.annotation.CheckResult
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 typealias FlowTransformer<I, O> = (Flow<I>) -> Flow<O>
 
@@ -61,7 +68,6 @@ fun RecyclerView.scrollEvents(): Flow<RecyclerViewScrollEvent> {
   }
 }
 
-
 @OptIn(ExperimentalCoroutinesApi::class)
 fun ViewGroup.detaches(): Flow<Unit> {
   return callbackFlow {
@@ -75,6 +81,42 @@ fun ViewGroup.detaches(): Flow<Unit> {
     awaitClose { removeOnAttachStateChangeListener(listener) }
   }
 }
+
+@Deprecated(
+  message = "Should use Flow<T>.collectInViewLifecycle",
+  replaceWith = ReplaceWith(
+    "this.collectInViewLifecycle(owner, minActiveState, action)"
+  ),
+  level = DeprecationLevel.WARNING,
+)
+inline fun <T> Flow<T>.collectIn(
+  owner: Fragment,
+  minActiveState: Lifecycle.State = Lifecycle.State.STARTED,
+  crossinline action: suspend (value: T) -> Unit,
+) = collectIn(this as LifecycleOwner, minActiveState, action)
+
+inline fun <T> Flow<T>.collectIn(
+  owner: LifecycleOwner,
+  minActiveState: Lifecycle.State = Lifecycle.State.STARTED,
+  crossinline action: suspend (value: T) -> Unit,
+): Job = owner.lifecycleScope.launch {
+  owner.repeatOnLifecycle(state = minActiveState) { collect { action(it) } }
+}
+
+/**
+ * Launches a new coroutine and repeats `block` every time the Fragment's viewLifecycleOwner
+ * is in and out of `minActiveState` lifecycle state.
+ */
+@Suppress("unused")
+inline fun <T> Flow<T>.collectInViewLifecycle(
+  fragment: Fragment,
+  minActiveState: Lifecycle.State = Lifecycle.State.STARTED,
+  crossinline action: suspend (value: T) -> Unit,
+): Job = collectIn(
+  owner = fragment.viewLifecycleOwner,
+  minActiveState = minActiveState,
+  action = action,
+)
 
 /*
 fun main() = runBlocking {

@@ -10,7 +10,6 @@ import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.P
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PartialStateChange.Refresh
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PhotoVS
 import com.hoc081098.paginationmviflow.ui.main.MainContract.PostVS
-import javax.inject.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +17,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import javax.inject.Inject
 
 @Suppress("USELESS_CAST")
 class MainInteractorImpl @Inject constructor(

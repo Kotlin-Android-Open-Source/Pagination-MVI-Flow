@@ -4,9 +4,9 @@ import com.hoc081098.paginationmviflow.data.remote.ApiService
 import com.hoc081098.paginationmviflow.domain.dispatchers_schedulers.CoroutinesDispatchersProvider
 import com.hoc081098.paginationmviflow.domain.entity.Post
 import com.hoc081098.paginationmviflow.domain.repository.PostRepository
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.withContext
 
 @Singleton
 class PostRepositoryImpl @Inject constructor(
@@ -25,5 +25,4 @@ class PostRepositoryImpl @Inject constructor(
       }
     }
   }
-
 }
