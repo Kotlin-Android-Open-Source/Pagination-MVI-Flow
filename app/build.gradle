@@ -48,7 +48,7 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.4.0"
 
     // Coroutines
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-RC"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-RC2"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0-RC"
 
     // Hilt
