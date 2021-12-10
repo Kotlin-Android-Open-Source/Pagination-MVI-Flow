@@ -49,7 +49,7 @@ dependencies {
 
     // Coroutines
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-RC"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0-RC"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0-RC2"
 
     // Hilt
     implementation "com.google.dagger:hilt-android:$dagger_hilt_version"
