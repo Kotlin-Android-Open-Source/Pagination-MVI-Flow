@@ -3,6 +3,9 @@ buildscript {
   ext {
     kotlin_version = "1.6.10"
     dagger_hilt_version = "2.40.5"
+    coroutines_version = "1.6.0-RC"
+    nav_version = "2.3.5"
+    ktlint_version = "0.43.2"
   }
 
   repositories {
@@ -41,7 +44,7 @@ subprojects {
       target("**/*.kt")
 
       // Spotless doesn't read .editorconfig yet: https://github.com/diffplug/spotless/issues/142
-      ktlint('0.41.0').userData([
+      ktlint(ktlint_version).userData([
         'indent_size'             : '2',
         'ij_kotlin_imports_layout': '*',
         'end_of_line'             : 'lf',
@@ -72,7 +75,7 @@ subprojects {
     kotlinGradle {
       target("**/*.gradle.kts", "*.gradle.kts")
 
-      ktlint('0.41.0').userData([
+      ktlint(ktlint_version).userData([
         "indent_size"             : "2",
         "ij_kotlin_imports_layout": "*",
         "end_of_line"             : "lf",
