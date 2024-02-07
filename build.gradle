@@ -4,7 +4,7 @@ buildscript {
     kotlin_version = "1.6.10"
     dagger_hilt_version = "2.41"
     coroutines_version = "1.6.0"
-    nav_version = "2.4.1"
+    nav_version = "2.7.7"
     ktlint_version = "0.43.2"
   }
 
